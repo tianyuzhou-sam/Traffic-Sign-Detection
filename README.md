@@ -2,6 +2,10 @@
 
 ### A new version using SSD will be released this summer for anyone need higher accuracy detection method. Stay tuned for new update!
 
+### 0. 
+
+Thanks for great work from original contributor. I added support for OpenCV 4
+
 ### 1. Description ###
 This project is a traffic signs detection and classification system on videos using OpenCV.
 The detection phase uses Image Processing techniques that create contours on each video frame and find all ellipses or circles among those contours. They are marked as candidates for traffic signs.
@@ -25,7 +29,7 @@ The SVM Model is trained each time the ```main.py``` called, before the detectio
 
 If a traffic sign is detected, it will be tracked until it disappears or there is another bigger sign in the frame. The tracking method is [Dense Optical Flow](https://docs.opencv.org/trunk/d7/d8b/tutorial_py_lucas_kanade.html).
 ### 2. Prerequisites:
-- Python 3.5
+- Python 4.7s
 - [OpenCV3](https://opencv.org/)
 - Imutils (use```pip3 install imutils``` to install)
 
