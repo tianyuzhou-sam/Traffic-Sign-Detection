@@ -7,6 +7,7 @@ import imutils
 import argparse
 import os
 import math
+import time
 
 from classification import training, getLabel
 
@@ -32,7 +33,10 @@ def clean_images():
 def constrastLimit(image):
     img_hist_equalized = cv2.cvtColor(image, cv2.COLOR_BGR2YCrCb)
     channels = cv2.split(img_hist_equalized)
-    channels[0] = cv2.equalizeHist(channels[0])
+    # channels[0] = cv2.equalizeHist(channels[0])
+    MyList = list(channels)
+    MyList[0] = cv2.equalizeHist(channels[0])
+    channels = tuple(MyList)
     img_hist_equalized = cv2.merge(channels)
     img_hist_equalized = cv2.cvtColor(img_hist_equalized, cv2.COLOR_YCrCb2BGR)
     return img_hist_equalized
@@ -71,7 +75,7 @@ def removeSmallComponents(image, threshold):
 def findContour(image):
     #find contours in the thresholded image
     cnts = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE    )
-    cnts = cnts[0] if imutils.is_cv2() else cnts[1]
+    cnts = imutils.grab_contours(cnts)
     return cnts
 
 def contourIsSign(perimeter, centroid, threshold):
@@ -119,6 +123,8 @@ def findLargestSign(image, contours, threshold, distance_theshold):
     coordinate = None
     sign = None
     for c in contours:
+        # craw contours
+        # cv2.drawContours(image, [c], -1, (0, 255, 0), 2)
         M = cv2.moments(c)
         if M["m00"] == 0:
             continue
@@ -132,6 +138,8 @@ def findLargestSign(image, contours, threshold, distance_theshold):
             right, bottom = np.amax(coordinate, axis = 0)
             coordinate = [(left-2,top-2),(right+3,bottom+1)]
             sign = cropSign(image,coordinate)
+        # draw centroid
+        # cv2.rectangle(image, [cX-1,cY-1],[cX+1,cY+1], (255, 255, 255), 10)
     return sign, coordinate
 
 
@@ -140,6 +148,7 @@ def findSigns(image, contours, threshold, distance_theshold):
     coordinates = []
     for c in contours:
         # compute the center of the contour
+        c = c.astype(float)
         M = cv2.moments(c)
         if M["m00"] == 0:
             continue
@@ -162,18 +171,16 @@ def localization(image, min_size_components, similitary_contour_with_circle, mod
     binary_image = removeSmallComponents(binary_image, min_size_components)
 
     binary_image = cv2.bitwise_and(binary_image,binary_image, mask=remove_other_color(image))
-
+    
     #binary_image = remove_line(binary_image)
 
     cv2.imshow('BINARY IMAGE', binary_image)
     contours = findContour(binary_image)
-    #signs, coordinates = findSigns(image, contours, similitary_contour_with_circle, 15)
+    # sign, coordinate = findSigns(image, contours, similitary_contour_with_circle, 15)
     sign, coordinate = findLargestSign(original_image, contours, similitary_contour_with_circle, 15)
-    
     text = ""
     sign_type = -1
     i = 0
-
     if sign is not None:
         sign_type = getLabel(model, sign)
         sign_type = sign_type if sign_type <= 8 else 8
@@ -229,6 +236,7 @@ def main(args):
     clean_images()
     #Training phase
     model = training()
+    # model = cv2.ml.SVM_load('data_svm.dat')
 
     vidcap = cv2.VideoCapture(args.file_name)
 
@@ -260,8 +268,9 @@ def main(args):
     while True:
         success,frame = vidcap.read()
         if not success:
-            print("FINISHED")
-            break
+                print("FINISHED")
+                break
+        
         width = frame.shape[1]
         height = frame.shape[0]
         #frame = cv2.resize(frame, (640,int(height/(width/640))))
@@ -271,7 +280,7 @@ def main(args):
         #image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         coordinate, image, sign_type, text = localization(frame, args.min_size_components, args.similitary_contour_with_circle, model, count, current_sign)
         if coordinate is not None:
-            cv2.rectangle(image, coordinate[0],coordinate[1], (255, 255, 255), 1)
+            cv2.rectangle(image, coordinate[0], coordinate[1], (255, 255, 255), 1)
         print("Sign:{}".format(sign_type))
         if sign_type > 0 and (not current_sign or sign_type != current_sign):
             current_sign = sign_type
